@@ -44,7 +44,7 @@ d3.csv('/data/IMDB-Movie-Data.csv').then(function(data) {
     data.forEach(d => {
      d.name = d.title,
      d.value = +d.revenue,
-     d.lastValue = +d.lastValue,
+     d.lastValue = +d.revenue - (0.1*+d.revenue),
      d.value = isNaN(d.revenue) ? 0 : d.revenue,
      d.year = +d.year,
      d.colour = d3.hsl(Math.random()*360,0.75,0.75)
@@ -61,7 +61,7 @@ d3.csv('/data/IMDB-Movie-Data.csv').then(function(data) {
   console.log('yearSlice: ', yearSlice)
 
   let x = d3.scaleLinear()
-     .domain([0, d3.max(yearSlice, d => d.value)])
+     .domain([0, d3.max(yearSlice, d => +d.value)])
      .range([margin.left, width-margin.right-65]);
 
   let y = d3.scaleLinear()
@@ -121,15 +121,15 @@ d3.csv('/data/IMDB-Movie-Data.csv').then(function(data) {
 
 let ticker = d3.interval(e => {
 
-   yearSlice = data.filter(d => d.year == year && !isNaN(d.value))
-     .sort((a,b) => b.value - a.value)
+   yearSlice = data.filter(d => d.year == year && !isNaN(+d.value))
+     .sort((a,b) => +b.value - +a.value)
      .slice(0,top_n);
 
    yearSlice.forEach((d,i) => d.rank = i);
 
    // console.log('IntervalYear: ', yearSlice);
 
-   x.domain([0, d3.max(yearSlice, d => d.value)]);
+   x.domain([0, d3.max(yearSlice, d => +d.value)]);
 
    svg.select('.xAxis')
      .transition()
@@ -165,7 +165,7 @@ let ticker = d3.interval(e => {
      .transition()
        .duration(tickDuration)
        .ease(d3.easeLinear)
-       .attr('width', d => x(d.value)-x(0)-1)
+       .attr('width', d => x(+d.value)-x(0)-1)
        .attr('y', d => y(top_n+1)+5)
        .remove();
 
@@ -190,15 +190,15 @@ let ticker = d3.interval(e => {
        .transition()
        .duration(tickDuration)
          .ease(d3.easeLinear)
-         .attr('x', d => x(d.value)-8)
-         .attr('y', d => y(d.rank)+5+((y(1)-y(0))/2)+1);
+         .attr('x', d => x(+d.value)-8)
+         .attr('y', d => y(+d.rank)+5+((y(1)-y(0))/2)+1);
 
     labels
        .exit()
        .transition()
          .duration(tickDuration)
          .ease(d3.easeLinear)
-         .attr('x', d => x(d.value)-8)
+         .attr('x', d => x(+d.value)-8)
          .attr('y', d => y(top_n+1)+5)
          .remove();
 
