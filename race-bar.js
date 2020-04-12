@@ -2,7 +2,7 @@ var svg = d3.select("body").append("svg")
   .attr("width", 960)
   .attr("height", 600);
 
-var tickDuration = 500;
+var tickDuration = 1400;
 
 var top_n = 12;
 var height = 600;
@@ -20,41 +20,71 @@ let barPadding = (height-(margin.bottom+margin.top))/(top_n*5);
 let title = svg.append('text')
  .attr('class', 'title')
  .attr('y', 24)
- .html('18 years of Interbrand’s Top Global Brands');
+ .html('Most Popular U.S. Baby Names (1975-2014)');
 
-let subTitle = svg.append("text")
- .attr("class", "subTitle")
- .attr("y", 55)
- .html("Brand value, $m");
+let legendBox1 = svg.append('rect')
+ .attr('class', 'legend')
+ .attr('y', 38)
+ .attr('width', 15)
+ .attr('height', 15)
+ .style('fill', '#EFAC24')
+
+ let legendText1 = svg.append('text')
+  .attr('class', 'caption')
+  .attr('x', 20)
+  .attr('y', 52)
+  .html('Female');
+
+let legendBox2 = svg.append('rect')
+ .attr('class', 'legend')
+ .attr('x', 90)
+ .attr('y', 38)
+ .attr('width', 15)
+ .attr('height', 15)
+ .style('fill', '#24EFCF')
+
+let legendText2 = svg.append('text')
+  .attr('class', 'caption')
+  .attr('x', 110)
+  .attr('y', 52)
+  .html('Male');
 
 let caption = svg.append('text')
  .attr('class', 'caption')
  .attr('x', width)
  .attr('y', height-5)
  .style('text-anchor', 'end')
- .html('Source: Interbrand');
+ .html('Source: Social Security Administration');
 
  let year = 1975;
 
-d3.csv('/data/clean-national-names.csv').then(function(data) {
+d3.csv('/data/national-names-clean.csv').then(function(data) {
 //if (error) throw error;
 
   console.log(data);
+
+  //get years
+  var years = d3.map(data, function(d){return(d.Year)}).keys()
+  years.sort();
+  console.log(years);
 
    data.forEach(d => {
     d.name = d.Name,
     d.value = +d.Count,
     d.lastValue = +d.lastCount,
     d.value = isNaN(+d.Count) ? 0 : +d.Count,
+    d.lastValue = isNaN(+d.lastCount) ? +d.Count : +d.lastCount,
     d.year = d.Year,
-    d.colour = d3.hsl(Math.random()*360,0.75,0.75),
-    d.rank = +d.rank
+    d.rank = +d.rank,
+    d.colour = (d.Gender == 'F') ? '#EFAC24': '#24EFCF'
   });
 
  console.log(data);
 
- let yearSlice = data.filter(d => +d.year == year && !isNaN(+d.value))
-  .sort((a,b) => +b.value - +a.value)
+ let yIndex = 0;
+ let year = years[yIndex];
+ let yearSlice = data.filter(d => d.year == year && !isNaN(d.value))
+  .sort((a,b) => b.value - a.value)
   .slice(0, top_n);
 
   yearSlice.forEach((d,i) => d.rank = i);
@@ -62,7 +92,7 @@ d3.csv('/data/clean-national-names.csv').then(function(data) {
  console.log('yearSlice: ', yearSlice)
 
  let x = d3.scaleLinear()
-    .domain([0, d3.max(yearSlice, d => +d.value)])
+    .domain([0, d3.max(yearSlice, d => d.value)])
     .range([margin.left, width-margin.right-65]);
 
  let y = d3.scaleLinear()
@@ -88,8 +118,8 @@ d3.csv('/data/clean-national-names.csv').then(function(data) {
     .append('rect')
     .attr('class', 'bar')
     .attr('x', x(0)+1)
-    .attr('width', d => x(+d.value)-x(0)-1)
-    .attr('y', d => y(+d.rank)+5)
+    .attr('width', d => x(d.value)-x(0))
+    .attr('y', d => y(d.rank)+5)
     .attr('height', y(1)-y(0)-barPadding)
     .style('fill', d => d.colour);
 
@@ -99,9 +129,9 @@ d3.csv('/data/clean-national-names.csv').then(function(data) {
     .append('text')
     .attr('class', 'label')
     .attr('x', d => x(d.value)-8)
-    .attr('y', d => y(+d.rank)+5+((y(1)-y(0))/2)+1)
+    .attr('y', d => y(d.rank)+5+((y(1)-y(0))/2)+1)
     .style('text-anchor', 'end')
-    .html(d => d.name);
+    .html(d => d.name)
 
 svg.selectAll('text.valueLabel')
   .data(yearSlice, d => d.name)
@@ -109,8 +139,8 @@ svg.selectAll('text.valueLabel')
   .append('text')
   .attr('class', 'valueLabel')
   .attr('x', d => x(d.value)+5)
-  .attr('y', d => y(+d.rank)+5+((y(1)-y(0))/2)+1)
-  .text(d => d3.format(',.0f')(+d.lastValue));
+  .attr('y', d => y(d.rank)+5+((y(1)-y(0))/2)+1)
+  .text(d => d3.format(',.0f')(d.lastValue))
 
 let yearText = svg.append('text')
   .attr('class', 'yearText')
@@ -122,8 +152,8 @@ let yearText = svg.append('text')
 
 let ticker = d3.interval(e => {
 
-  yearSlice = data.filter(d => d.year == year && !isNaN(+d.value))
-    .sort((a,b) => +b.value - +a.value)
+  yearSlice = data.filter(d => d.year == year && !isNaN(d.value))
+    .sort((a,b) => b.value - a.value)
     .slice(0,top_n);
 
   yearSlice.forEach((d,i) => d.rank = i);
@@ -152,7 +182,7 @@ let ticker = d3.interval(e => {
     .transition()
       .duration(tickDuration)
       .ease(d3.easeLinear)
-      .attr('y', d => y(+d.rank)+5);
+      .attr('y', d => y(d.rank)+5);
 
    bars
     .transition()
@@ -203,30 +233,28 @@ let ticker = d3.interval(e => {
         .attr('y', d => y(top_n+1)+5)
         .remove();
 
-
-
    let valueLabels = svg.selectAll('.valueLabel').data(yearSlice, d => d.name);
 
    valueLabels
       .enter()
       .append('text')
       .attr('class', 'valueLabel')
-      .attr('x', d => x(+d.value)+5)
+      .attr('x', d => x(d.value)+5)
       .attr('y', d => y(top_n+1)+5)
-      .text(d => d3.format(',.0f')(+d.lastValue))
+      .text(d => d3.format(',.0f')(d.value))
       .transition()
         .duration(tickDuration)
         .ease(d3.easeLinear)
-        .attr('y', d => y(+d.rank)+5+((y(1)-y(0))/2)+1);
+        .attr('y', d => y(d.rank)+5+((y(1)-y(0))/2)+1);
 
    valueLabels
       .transition()
         .duration(tickDuration)
         .ease(d3.easeLinear)
-        .attr('x', d => x(+d.value)+5)
-        .attr('y', d => y(+d.rank)+5+((y(1)-y(0))/2)+1)
+        .attr('x', d => x(d.value)+5)
+        .attr('y', d => y(d.rank)+5+((y(1)-y(0))/2)+1)
         .tween("text", function(d) {
-           let i = d3.interpolateRound(+d.lastValue, +d.value);
+           let i = d3.interpolateRound(d.lastValue, d.value);
            return function(t) {
              this.textContent = d3.format(',')(i(t));
           };
@@ -238,14 +266,16 @@ let ticker = d3.interval(e => {
     .transition()
       .duration(tickDuration)
       .ease(d3.easeLinear)
-      .attr('x', d => x(+d.value)+5)
+      .attr('x', d => x(d.lastValue)+5)
       .attr('y', d => y(top_n+1)+5)
       .remove();
 
   yearText.html(~~year);
 
- if(year == 2014) ticker.stop();
- year = d3.format('.1f')((+year) + 0.1);
+//year to year
+ yIndex ++;
+ if(yIndex >= years.length) ticker.stop();
+ year = years[yIndex];
 },tickDuration);
 
 });
